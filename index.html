@@ -1,0 +1,402 @@
+<!DOCTYPE HTML>
+
+<html>
+
+<head>
+	<meta charset = 'utf-8'>
+	<title>jäik-dev</title>
+	<style>
+		html, body{
+			padding: 0;
+			margin: 0;
+
+			background-color: #222222;
+			color: #666666;
+		}
+
+		#world{
+
+			overflow: hidden;
+
+			position: relative;
+
+			margin: 40px;
+
+			width: 1024px;
+			height: 720px;
+
+			border: 1px dashed #888888;
+		}
+
+		.particle {
+			width: 4px;
+			height: 4px;
+
+			background-color: #888888;
+			border: none;
+			border-radius: 100%;
+		}
+
+		.circle {
+			/*background-color: #888888;*/
+			border: 1px solid #888888;
+			border-radius: 100%;
+		}
+	</style>
+
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+	<script language = 'javascript'>
+
+		var vector = function(x, y){ this.x = x; this.y = y; }
+		vector.prototype = {
+			iadd: function(v){ this.x += v.x; this.y += v.y; return this},
+			isub: function(v){ this.x -= v.x; this.y -= v.y; return this},
+			imul: function(n){ this.x *= n; this.y *= n; return this},
+			idiv: function(n){ this.x /= n; this.y /= n; return this},
+
+			zero: function(n){ this.x = 0; this.y = 0; return this},
+
+			add: function(v){ return new vector(this.x + v.x, this.y + v.y);},
+			sub: function(v){ return new vector(this.x - v.x, this.y - v.y);},
+			mul: function(n){ return new vector(this.x * n, this.y * n);},
+			div: function(n){ return new vector(this.x/n, this.y/n);},
+
+			dot: function(v){ return (this.x * v.x + this.y * v.y);},
+
+			magnitude: function(){ return Math.sqrt(this.x * this.x + this.y * this.y);},
+			magnitude2: function(){ return this.x * this.x + this.y * this.y;},
+			unit: function(){
+				var a = Math.sqrt(this.x * this.x + this.y * this.y);
+				return new vector(
+					this.x / a,
+					this.y / a
+				);
+			},
+
+			normalize: function(){
+				var a = Math.sqrt(this.x * this.x + this.y * this.y);
+				this.x /= a;
+				this.y /= a;
+				return this;
+			},
+		}
+
+		var index = 0;
+
+		var Particle = function(args){
+			this.type = 1;
+
+			this.inv_mass = 1;
+
+			this.pos = new vector(args.x, args.y);
+			this.prev = new vector(args.x, args.y);
+
+			this.fixated = args.fixated;
+
+			this.accel = new vector(0, 0);
+
+			$('#world').append(
+			'<div id = "'
+				+ index +
+			'" class = "particle" style = "position: absolute; left: 0; bottom: 0; transform: translate3d('
+				+ this.pos.x + 'px, ' + (-this.pos.y) +
+			'px, 0) rotate('
+				+ 0 +
+			'rad);"></div>'
+			);
+
+			this.element = document.getElementById(index);
+
+			console.log('new particle');
+			++index;
+
+		}
+
+		Particle.prototype = {
+			accelerate: function(v){ if(!this.fixated){this.accel.iadd(v);} },
+			correct: function(v){ if(!this.fixated){this.pos.iadd(v);} },
+			step: function(dt){
+				this.accel.imul(dt * dt);
+				
+				var updated_pos = this.pos.mul(2).sub(this.prev).add(this.accel);
+
+				this.prev = this.pos;
+				this.pos = updated_pos;
+				this.accel.zero();
+			},
+			sync: function(){
+				this.element.style.transform =
+				'translate3d('
+					+ this.pos.x + 'px, ' + (-this.pos.y) +
+				'px, 0) rotate('
+					+ 0 +
+				'rad)';
+
+			}
+		}
+
+		var Circle = function(args){
+			this.type = 2;
+
+			this.inv_mass = 1 / args.mass;
+			this.e = args.restitution;
+
+			this.pos = new vector(args.x, args.y);
+			this.prev = new vector(args.x, args.y);
+
+			this.radius = args.radius;
+
+			this.fixated = args.fixated;
+
+			this.accel = new vector(0, 0);
+
+			$('#world').append(
+			'<div id = "'
+				+ index +
+			'" class = "circle" style = "position: absolute; left: 0; bottom: 0; width: '
+				+ (this.radius * 2 - 1) +
+			'px; height: '
+				+ (this.radius * 2 - 1) +
+			'px; transform: translate3d('
+				+ (this.pos.x - this.radius) + 'px, ' + (-this.pos.y + this.radius) +
+			'px, 0) rotate('
+				+ 0 +
+			'rad);"></div>'
+			);
+
+			this.element = document.getElementById(index);
+
+			console.log('new circle');
+			++index;
+
+		}
+
+		Circle.prototype = {
+			accelerate: function(v){
+				/*
+				this.pos += this.accel.mul(dt * dt);
+				this.accel.zero();
+				*/
+				if(!this.fixated){this.accel.iadd(v);}
+			},
+			//accelerate: function(v){ if(!this.fixated){this.accel.iadd(v);} },
+			correct: function(v){ if(!this.fixated){this.pos.iadd(v);} },
+			step: function(dt){
+				this.accel.imul(dt * dt);
+				
+				var updated_pos = this.pos.mul(2).sub(this.prev).add(this.accel);
+
+				this.prev = this.pos;
+				this.pos = updated_pos;
+				this.accel.zero();
+			},
+			sync: function(){
+				this.element.style.transform =
+				'translate3d('
+					+ (this.pos.x - this.radius) + 'px, '
+					+ (-this.pos.y + this.radius) +	'px, 0) rotate('
+					+ 0 +
+				'rad)';
+
+			}
+		}
+
+		var Collide = function(a, b, impulse_preservation){
+			var target = a.radius + b.radius;
+			var N = b.pos.sub(a.pos);
+
+			if(N.magnitude2() < target * target){
+
+				N.normalize();
+				
+				var v0a = a.pos.sub(a.prev);
+				var v0b = b.pos.sub(b.prev);
+
+				//resolve collision constraint
+				var delta = target - b.pos.sub(a.pos).magnitude();
+				a.correct(
+					N.mul(-0.5 * delta)
+				);
+				//a.prev = a.pos;
+				b.correct(
+					N.mul(0.5 * delta)
+				);
+				//b.prev = b.pos;
+
+				//exchange impulses
+				if(impulse_preservation){
+					var dt = 1;
+					var e = Math.min(a.e, b.e);
+
+					var Iex = (1 + e) * v0b.sub(v0a).dot(N) / (a.inv_mass + b.inv_mass);
+
+					var va = v0a.add(N.mul(Iex * a.inv_mass));
+					var vb = v0b.add(N.mul(-Iex * b.inv_mass));
+
+					a.prev = a.pos.sub(va.mul(dt));
+					b.prev = b.pos.sub(vb.mul(dt));
+				}
+
+			}
+		}
+
+		var distConstraint = function(a, b){
+			this.a = a;
+			this.b = b;
+			this.target = b.pos.sub(a.pos).magnitude();
+		}
+
+		distConstraint.prototype = {
+			resolve: function(){
+				var direction = this.b.pos.sub(this.a.pos);
+				var L = direction.magnitude();
+				var factor = (L - this.target) /L/2;
+				var correction = direction.mul(factor);
+				this.a.correct(correction);
+				correction.imul(-1);
+				this.b.correct(correction);
+			},
+		}
+
+
+
+		var elem = [];
+		var constraints = [];
+
+		$(document).ready(function(){
+			
+			$('#world').on('click', clickHandler);
+
+			elem[0] = new Circle({
+				x: 500,
+				y: 200,
+				radius: 80,
+				mass: 100000,
+				restitution: 0.5,
+				fixated: true,
+			});
+
+			/*
+			elem[0].accelerate(new vector(10, -10));
+
+			elem[1] = new Circle({
+				x: 600,
+				y: 400,
+				radius: 20,
+				fixated: false,
+			});
+
+			elem[2] = new Circle({
+				x: 650,
+				y: 400,
+				radius: 20,
+				fixated: false,
+			});
+
+			elem[3] = new Particle({
+				x: 600,
+				y: 400,
+				fixated: false,
+			});
+
+			elem[2] = new Particle({
+				x: 550,
+				y: 550,
+				fixated: false,
+			});
+			elem[3] = new Particle({
+				x: 550,
+				y: 500,
+				fixated: false,
+			});
+			elem[4] = new Particle({
+				x: 600,
+				y: 500,
+				fixated: true,
+			});
+			constraints[0] = new Constraint(elem[0], elem[1]);
+			constraints[1] = new Constraint(elem[1], elem[2]);
+			constraints[2] = new Constraint(elem[2], elem[3]);
+			constraints[3] = new Constraint(elem[3], elem[0]);
+			constraints[4] = new Constraint(elem[4], elem[3]);
+			constraints[5] = new Constraint(elem[1], elem[3]);
+			constraints[6] = new Constraint(elem[0], elem[2]);
+			*/
+			timestep();
+		});
+
+		function clickHandler(event){
+			var w = document.getElementById("world");
+			var x = event.pageX - $("#world").offset().left;
+			var y = 720 - (event.pageY - $("#world").offset().top);
+
+			//console.log(x + " " + y);
+
+			elem[index] = new Circle({
+				x: x,
+				y: y,
+				mass: 1,
+				radius: 20,
+				restitution: 1,
+				fixated: false,
+			});
+			//if(index % 2){elem[index - 1].accelerate(new vector(5, 0));}
+		}
+
+		var iter = 10;
+		var dt = 1 / iter;
+
+		var gravity = new vector(0, -1);
+		function timestep(){
+
+			for(var t = 0; t < iter; ++t){
+
+
+
+				//particle constraints
+				for(var i = 0; i < constraints.length; ++i){constraints[i].resolve();}
+
+				for(var i = 0; i < elem.length; ++i){ elem[i].accelerate(gravity);}
+
+				//collision resolution
+				for(var i = 0; i < elem.length; ++i){
+				for(var j = i + 1; j < elem.length; ++j){
+					Collide(elem[i], elem[j], false);
+				}	
+				}
+
+				for(var i = 0; i < elem.length; ++i){ elem[i].step(dt);}
+
+				for(var i = 0; i < elem.length; ++i){
+				for(var j = i + 1; j < elem.length; ++j){
+					Collide(elem[i], elem[j], true);
+				}	
+				}
+
+
+				//placeholder ground constraint
+					for(var i = 0; i < elem.length; ++i){
+					if(elem[i].pos.y - (0 || elem[i].radius) < 0){ elem[i].pos.y = elem[i].radius;}
+					//if(elem[i].pos.x + (0 || elem[i].radius) > 720){ elem[i].pos.x = -elem[i].radius;}
+					//if(elem[i].pos.x - (0 || elem[i].radius) < 0){ elem[i].pos.x = elem[i].radius;}
+				}
+				
+			}
+
+			for(var i = 0; i < elem.length; ++i){
+				elem[i].sync();
+			}
+
+			window.requestAnimationFrame(timestep);
+		}
+	</script>
+
+</head>
+
+<body>
+	<div id = "world">
+
+	</div>
+</body>
+
+</html>
