@@ -30,22 +30,45 @@
 
 
 		.particle {
+			z-index: 3;
 			background-color: #888888;
 			border: 2px solid #888888;
 			border-radius: 100%;
 		}
 
+		.particle:after{
+			content: '';
+			position: absolute;
+
+			top: -10px; bottom: -10px;
+			left: -10px; right: -10px;
+
+			border-radius: 100%;
+		}
+
+		.selected:after {
+			content: '';
+			position: absolute;
+
+			top: -8px; bottom: -8px;
+			left: -8px; right: -8px;
+
+			border: 1px dashed #666666;
+			border-radius: 100%;
+		}
+
 		.circle {
+			z-index: 3;
 			border: 1px solid #888888;
 			border-radius: 100%;
 		}
 
 		.line {
+			z-index: 1;
 			transform-origin: top left;
 
-			background-color: #444444;
+			background-color: #333333;
 			height: 1px;
-			border-top: 1px none #444444;
 		}
 	</style>
 
@@ -211,6 +234,7 @@
 					+ rot +
 				'rad)"></div>'
 			);
+			this.element = document.getElementById('c' + const_count);
 
 			++const_count;
 		}
@@ -231,14 +255,12 @@
 				var rot = - Math.atan(v.y / v.x);
 				if(v.x < 0){ rot += Math.PI; }
 
-				var c = document.getElementById('c' + this.index)
-
-				c.style.transform = 
+				this.element.style.transform = 
 				'translate3d('
 					+ (this.b.pos.x + 2) + 'px, ' + (720 - this.b.pos.y - 2) + 'px, 0) rotate('
 					+ rot +
 				'rad)';
-				c.style.width = (v.magnitude() + 'px');
+				this.element.style.width = (v.magnitude() + 'px');
 			}
 		}
 
@@ -323,6 +345,8 @@
 					mass: args.mass || default_circle.mass,
 					restitution: args.restitution || default_circle.restitution,
 			});
+
+			//$(elem[index - 1].element).on('mouseover', function(){console.log('hi' + this.id)});
 		}
 
 
@@ -337,26 +361,28 @@
 					restitution: args.restitution || default_particle.restitution,
 			});
 			constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
+
+			//$(elem[index - 1].element).on('mouseover', function(){selectElem(parseInt(this.id));});
 		}
 
+		//...............................................................................EDITOR
 
-
-
-		
 		function clickHandler(event){
 			var w = document.getElementById("world");
 			var x = event.pageX - $("#world").offset().left;
 			var y = 720 - (event.pageY - $("#world").offset().top);
 
-			//if(Math.floor(2 * Math.random()) % 2){
-			//createCircle({x: x, y: y, radius: Math.random() * 40});
-			//} else {
 			createParticle({x: x, y: y});
-			//}
 			
 		}
-
-
+		/*
+		var selectedindex = 0;
+		function selectElem(i){
+			$(elem[selectedindex].element).removeClass('selected');
+			selectedindex = i;
+			$(elem[selectedindex].element).addClass('selected');			
+		}
+		*/
 
 	</script>
 
