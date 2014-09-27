@@ -28,19 +28,24 @@
 			border: 1px dashed #888888;
 		}
 
-		.particle {
-			width: 4px;
-			height: 4px;
 
+		.particle {
 			background-color: #888888;
-			border: none;
+			border: 2px solid #888888;
 			border-radius: 100%;
 		}
 
 		.circle {
-			/*background-color: #888888;*/
 			border: 1px solid #888888;
 			border-radius: 100%;
+		}
+
+		.line {
+			transform-origin: top left;
+
+			background-color: #444444;
+			height: 1px;
+			border-top: 1px none #444444;
 		}
 	</style>
 
@@ -66,10 +71,17 @@
 
 			this.accel = new vector(0, 0);
 
+			var className = 'circle';
+			if(this.radius < 2){
+				className = 'particle'
+			}
+
 			$('#world').append(
 			'<div id = "'
 				+ index +
-			'" class = "circle" style = "position: absolute; left: 0; bottom: 0; width: '
+			'" class = "'
+				+ className +
+			'" style = "position: absolute; left: 0; bottom: 0; width: '
 				+ (this.radius * 2 - 1) +
 			'px; height: '
 				+ (this.radius * 2 - 1) +
@@ -151,7 +163,31 @@
 		}
 
 
-		//...............................................................................CONSTRAINT RESOLUTION
+		//...............................................................................CONSTRAINTS & RESOLUTION
+
+		var line_count = 0;
+		function drawVector(x, y, v){
+			var rot = - Math.atan(v.y / v.x);
+			if(v.x < 0){ rot += Math.PI; }
+			var line_name = 'l' + line_count;
+			$("#world").append(
+				'<div id = "'
+					+ line_name +
+				'" class = "line" style = "position: absolute; width: '
+					+ v.magnitude() +
+				'px; transform: translate3d('
+					+ x + 'px, ' + (720 - y) + 'px, 0) rotate('
+					+ rot +
+				'rad)"></div>'
+			);
+			setTimeout(function(){
+				$('#' + line_name).remove();
+			}, 20);
+
+			++line_count;
+		}
+
+
 		var const_count = 0;
 
 		var distConstraint = function(a, b){
@@ -159,6 +195,22 @@
 			this.a = a;
 			this.b = b;
 			this.target = b.pos.sub(a.pos).magnitude();
+
+			//display
+			var v = this.a.pos.sub(this.b.pos);
+			var rot = - Math.atan(v.y / v.x);
+			if(v.x < 0){ rot += Math.PI; }
+
+			$("#world").append(
+				'<div id = "c'
+					+ const_count +
+				'" class = "line" style = "position: absolute; width: '
+					+ v.magnitude() +
+				'px; transform: translate3d('
+					+ (this.b.pos.x) + 'px, ' + (720 - this.b.pos.y) + 'px, 0) rotate('
+					+ rot +
+				'rad)"></div>'
+			);
 
 			++const_count;
 		}
@@ -173,6 +225,21 @@
 				correction.imul(-1);
 				this.b.correct(correction);
 			},
+			sync: function(){
+				console.log('sync');
+				var v = this.a.pos.sub(this.b.pos);
+				var rot = - Math.atan(v.y / v.x);
+				if(v.x < 0){ rot += Math.PI; }
+
+				var c = document.getElementById('c' + this.index)
+
+				c.style.transform = 
+				'translate3d('
+					+ (this.b.pos.x + 2) + 'px, ' + (720 - this.b.pos.y - 2) + 'px, 0) rotate('
+					+ rot +
+				'rad)';
+				c.style.width = (v.magnitude() + 'px');
+			}
 		}
 
 
@@ -181,22 +248,68 @@
 		var elem = [];
 		var constraints = [];
 
+		var draw_constraints = 0;
+
 		$(document).ready(function(){
 			
 			$('#world').on('click', clickHandler);
 
 			elem[0] = new Circle({
 				x: 500,
-				y: 200,
+				y: 500,
 				radius: 80,
 				mass: 100000,
 				restitution: 0.5,
 				fixated: true,
 			});
-
+			/*
+			drawVector(500, 200, new vector(100, 100));
+			drawVector(500, 200, new vector(100, -100));
+			drawVector(500, 200, new vector(-100, -100));
+			drawVector(500, 200, new vector(-100, 100));
+			*/
 			timestep();
 		});
 
+
+		//...............................................................................TIMESTEPPING
+		var iter = 4;
+		var dt = 1 / iter;
+
+		var gravity = new vector(0, -1);
+		function timestep(){
+
+			for(var t = 0; t < iter; ++t){
+
+				//particle constraints
+				for(var i = 0; i < constraints.length; ++i){constraints[i].resolve();}
+				for(var i = 0; i < elem.length; ++i){ elem[i].accelerate(gravity);}
+
+				//collision resolution
+				for(var i = 0; i < elem.length; ++i){
+				for(var j = i + 1; j < elem.length; ++j){
+					Collide(elem[i], elem[j], false);
+				}}
+
+				//propagation
+				for(var i = 0; i < elem.length; ++i){ elem[i].step(dt);}
+
+				for(var i = 0; i < elem.length; ++i){
+				for(var j = i + 1; j < elem.length; ++j){
+					Collide(elem[i], elem[j], true);
+				}}
+
+				//placeholder ground constraint
+				for(var i = 0; i < elem.length; ++i){
+					if(elem[i].pos.y - (0 || elem[i].radius) < 0){ elem[i].pos.y = elem[i].radius;}
+				}
+				
+			}
+
+			for(var i = 0; i < elem.length; ++i){ elem[i].sync(); }
+			for(var i = 0; i < constraints.length; ++i){ constraints[i].sync(); }
+			window.requestAnimationFrame(timestep);
+		}
 
 
 		//...............................................................................INTERFACE
@@ -219,74 +332,32 @@
 			elem[index] = new Circle({
 					x: args.x || default_particle.x,
 					y: args.y || default_particle.y,
-					radius: 1,
+					radius: 0,
 					mass: args.mass || default_particle.mass,
 					restitution: args.restitution || default_particle.restitution,
 			});
-			//constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
+			constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
 		}
 
 
 
 
+		
 		function clickHandler(event){
 			var w = document.getElementById("world");
 			var x = event.pageX - $("#world").offset().left;
 			var y = 720 - (event.pageY - $("#world").offset().top);
 
 			//if(Math.floor(2 * Math.random()) % 2){
-			createCircle({x: x, y: y, radius: Math.random() * 40});
-			/*} else {
+			//createCircle({x: x, y: y, radius: Math.random() * 40});
+			//} else {
 			createParticle({x: x, y: y});
-			}
-			*/
+			//}
+			
 		}
 
 
-		//...............................................................................TIMESTEPPING
-		var iter = 10;
-		var dt = 1 / iter;
 
-		var gravity = new vector(0, -1);
-		function timestep(){
-
-			for(var t = 0; t < iter; ++t){
-
-				//particle constraints
-				for(var i = 0; i < constraints.length; ++i){constraints[i].resolve();}
-
-				for(var i = 0; i < elem.length; ++i){ elem[i].accelerate(gravity);}
-
-				//collision resolution
-				for(var i = 0; i < elem.length; ++i){
-				for(var j = i + 1; j < elem.length; ++j){
-					Collide(elem[i], elem[j], false);
-				}	
-				}
-
-				//propagation
-				for(var i = 0; i < elem.length; ++i){ elem[i].step(dt);}
-
-				for(var i = 0; i < elem.length; ++i){
-				for(var j = i + 1; j < elem.length; ++j){
-					Collide(elem[i], elem[j], true);
-				}	
-				}
-
-
-				//placeholder ground constraint
-				for(var i = 0; i < elem.length; ++i){
-					if(elem[i].pos.y - (0 || elem[i].radius) < 0){ elem[i].pos.y = elem[i].radius;}
-				}
-				
-			}
-
-			for(var i = 0; i < elem.length; ++i){
-				elem[i].sync();
-			}
-
-			window.requestAnimationFrame(timestep);
-		}
 	</script>
 
 </head>
