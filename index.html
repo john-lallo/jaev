@@ -5,22 +5,29 @@
 <head>
 	<meta charset = 'utf-8'>
 	<title>jäev-dev</title>
+
+	<link href = 'http://fonts.googleapis.com/css?family=Lato:400,700' rel = 'stylesheet' type = 'text/css'>
+	<link href = './world.css' rel = 'stylesheet' type = 'text/css'>
+	<link href = './interface.css' rel = 'stylesheet' type = 'text/css'>
+	<!--
 	<style>
 		html, body{
+			font-family: Lato, sans-serif; 
+
 			padding: 0;
 			margin: 0;
 
 			background-color: #222222;
-			color: #666666;
+			color: #999999;
 		}
 
 		#world{
-
+			float: left;
 			overflow: hidden;
 
 			position: relative;
 
-			margin: 40px;
+			margin: 20px 10px;
 
 			width: 1024px;
 			height: 720px;
@@ -28,6 +35,19 @@
 			border: 1px dashed #888888;
 		}
 
+		#toolkit{
+			float: left;
+			overflow: hidden;
+
+			position: relative;
+
+			margin: 20px 0;
+
+			width: 120px;
+			height: 720px;
+
+			background-color: #1d1d1d;
+		}
 
 		.particle {
 			z-index: 3;
@@ -40,20 +60,9 @@
 			content: '';
 			position: absolute;
 
-			top: -10px; bottom: -10px;
-			left: -10px; right: -10px;
+			top: -16px; bottom: -16px;
+			left: -16px; right: -16px;
 
-			border-radius: 100%;
-		}
-
-		.selected:after {
-			content: '';
-			position: absolute;
-
-			top: -8px; bottom: -8px;
-			left: -8px; right: -8px;
-
-			border: 1px dashed #666666;
 			border-radius: 100%;
 		}
 
@@ -70,8 +79,31 @@
 			background-color: #333333;
 			height: 1px;
 		}
-	</style>
 
+
+		.underhover:after {
+			content: '';
+			position: absolute;
+
+			top: -8px; bottom: -8px;
+			left: -8px; right: -8px;
+
+			border: 1px dashed #666666;
+			border-radius: 100%;
+		}
+
+		.selected:after {
+			content: '';
+			position: absolute;
+
+			top: -8px; bottom: -8px;
+			left: -8px; right: -8px;
+
+			border: 2px dashed #888888;
+			border-radius: 100%;
+		}
+	</style>
+	-->
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 	<script src = './vector.js' language = 'javascript'></script>
 	<script language = 'javascript'>
@@ -80,6 +112,7 @@
 		//...............................................................................CIRCLE ITEM
 		var Circle = function(args){
 
+			this.index = index;
 			this.type = 2;
 
 			this.inv_mass = 1 / args.mass;
@@ -187,7 +220,7 @@
 
 
 		//...............................................................................CONSTRAINTS & RESOLUTION
-
+		/*
 		var line_count = 0;
 		function drawVector(x, y, v){
 			var rot = - Math.atan(v.y / v.x);
@@ -209,7 +242,7 @@
 
 			++line_count;
 		}
-
+		*/
 
 		var const_count = 0;
 
@@ -250,7 +283,6 @@
 				this.b.correct(correction);
 			},
 			sync: function(){
-				console.log('sync');
 				var v = this.a.pos.sub(this.b.pos);
 				var rot = - Math.atan(v.y / v.x);
 				if(v.x < 0){ rot += Math.PI; }
@@ -276,11 +308,11 @@
 			
 			$('#world').on('click', clickHandler);
 
-			elem[0] = new Circle({
+			createCircle({
 				x: 500,
 				y: 500,
 				radius: 80,
-				mass: 100000,
+				mass: 100000000,
 				restitution: 0.5,
 				fixated: true,
 			});
@@ -299,6 +331,8 @@
 		var dt = 1 / iter;
 
 		var gravity = new vector(0, -1);
+
+		var running = 0;
 		function timestep(){
 
 			for(var t = 0; t < iter; ++t){
@@ -330,9 +364,13 @@
 
 			for(var i = 0; i < elem.length; ++i){ elem[i].sync(); }
 			for(var i = 0; i < constraints.length; ++i){ constraints[i].sync(); }
-			window.requestAnimationFrame(timestep);
-		}
 
+			if(running){ window.requestAnimationFrame(timestep); }
+		}
+		function toggleSimulation(){
+			running = !running;
+			if(running) timestep();
+		}
 
 		//...............................................................................INTERFACE
 		var default_circle = { x: 500, y: 500, radius: 20, mass: 1, restitution: 0.5}
@@ -341,14 +379,17 @@
 			elem[index] = new Circle({
 					x: args.x || default_circle.x,
 					y: args.y || default_circle.y,
+					fixated: args.fixated || default_circle.fixated,
 					radius: args.radius || default_circle.radius,
 					mass: args.mass || default_circle.mass,
 					restitution: args.restitution || default_circle.restitution,
 			});
 
-			//$(elem[index - 1].element).on('mouseover', function(){console.log('hi' + this.id)});
-		}
+			$(elem[index - 1].element).on('click', function(){selectElem(parseInt(this.id));});
 
+			$(elem[index - 1].element).on('mouseover', function(){hoverElem(parseInt(this.id));});
+			$(elem[index - 1].element).on('mouseout', unhover);
+		}
 
 		var default_particle = {x: 500,	y: 500,	mass: 1, restitution: 1}
 
@@ -356,34 +397,112 @@
 			elem[index] = new Circle({
 					x: args.x || default_particle.x,
 					y: args.y || default_particle.y,
+					fixated: args.fixated || default_particle.fixated,
 					radius: 0,
 					mass: args.mass || default_particle.mass,
 					restitution: args.restitution || default_particle.restitution,
 			});
-			constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
+			//constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
 
-			//$(elem[index - 1].element).on('mouseover', function(){selectElem(parseInt(this.id));});
+			$(elem[index - 1].element).on('click', function(){selectElem(parseInt(this.id));});
+
+			$(elem[index - 1].element).on('mouseover', function(){hoverElem(parseInt(this.id));});
+			$(elem[index - 1].element).on('mouseout', unhover);
+		}
+
+		function createConstraint(a, b){
+			console.log(a);
+			console.log(b);
+			constraints[const_count] = new distConstraint(elem[a], elem[b]);
 		}
 
 		//...............................................................................EDITOR
 
+		var mousemode = 0;
+		var create_circle = 1;
+		var create_particle = 2;
+		var create_constraint = 3;
+
 		function clickHandler(event){
+
 			var w = document.getElementById("world");
 			var x = event.pageX - $("#world").offset().left;
 			var y = 720 - (event.pageY - $("#world").offset().top);
 
-			createParticle({x: x, y: y});
-			
-		}
-		/*
-		var selectedindex = 0;
-		function selectElem(i){
-			$(elem[selectedindex].element).removeClass('selected');
-			selectedindex = i;
-			$(elem[selectedindex].element).addClass('selected');			
-		}
-		*/
+			event.preventDefault();
 
+			if(mousemode == 0){
+
+			} else if (mousemode == create_circle){
+				createCircle({x: x, y: y});
+				mousemode = 0;
+
+			} else if (mousemode == create_particle){
+				createParticle({x: x, y: y});
+				mousemode = 0;
+
+			} else if (mousemode == create_constraint){
+
+			}
+		}
+		
+		var joint_flag = 0;
+		var joint_a;
+		var jonit_b;
+
+		var hoverindex = 0;
+		function unhover(){
+			$(elem[hoverindex].element).removeClass('underhover');
+		}
+		function hoverElem(i){
+			if((mousemode == 0) || (mousemode == create_constraint)){
+				$(elem[hoverindex].element).removeClass('underhover');
+				hoverindex = i;
+				$(elem[hoverindex].element).addClass('underhover');	
+			}
+		}
+
+		var selectindex = 0;
+		function selectElem(i){
+			if ((mousemode == 0) || (mousemode == create_constraint)){
+				$(elem[selectindex].element).removeClass('selected');
+				selectindex = i;
+				$(elem[selectindex].element).removeClass('underhover');		
+				$(elem[selectindex].element).addClass('selected');	
+
+			}
+
+			if (mousemode == create_constraint){
+				if(joint_flag == 1){
+					joint_a = elem[selectindex].index;
+					++joint_flag;
+				} else if (joint_flag == 2){
+					joint_b = elem[selectindex].index;
+
+					createConstraint(joint_a, joint_b);
+
+					joint_flag = 0;
+				}
+			}
+		}
+
+		$(document).ready(function(){
+			$("#sim_switch").on('click', function(){
+				toggleSimulation();
+
+				if(running){
+					$("#sim_switch").removeClass('off');
+					$("#sim_switch").addClass('on');
+				} else {
+					$("#sim_switch").removeClass('on');
+					$("#sim_switch").addClass('off');
+				}
+			});
+
+			$("#circle_btn").on('click', function(){ mousemode = create_circle; });
+			$("#particle_btn").on('click', function(){ mousemode = create_particle; });
+			$("#constraint_btn").on('click', function(){ mousemode = create_constraint; joint_flag = 1;});
+		});
 	</script>
 
 </head>
@@ -391,6 +510,15 @@
 <body>
 	<div id = "world">
 
+	</div>
+	<div id = "toolkit">
+		<center style = "background-color: #888888; color: #222222; font-size: 10px; padding: 2px">TOOLKIT</center>
+		<div id = "sim_switch" class = "switch off">TIMESTEP</div>
+
+		<div class = "label">ADD NEW</div>
+		<div id = "particle_btn" class = "btn">· PARTICLE</div>
+		<div id = "circle_btn" class = "btn">· CIRCLE</div>
+		<div id = "constraint_btn" class = "btn">· CONSTRAINT</div>
 	</div>
 </body>
 
