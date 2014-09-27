@@ -4,7 +4,7 @@
 
 <head>
 	<meta charset = 'utf-8'>
-	<title>jäik-dev</title>
+	<title>jäev-dev</title>
 	<style>
 		html, body{
 			padding: 0;
@@ -45,97 +45,13 @@
 	</style>
 
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+	<script src = './vector.js' language = 'javascript'></script>
 	<script language = 'javascript'>
-
-		var vector = function(x, y){ this.x = x; this.y = y; }
-		vector.prototype = {
-			iadd: function(v){ this.x += v.x; this.y += v.y; return this},
-			isub: function(v){ this.x -= v.x; this.y -= v.y; return this},
-			imul: function(n){ this.x *= n; this.y *= n; return this},
-			idiv: function(n){ this.x /= n; this.y /= n; return this},
-
-			zero: function(n){ this.x = 0; this.y = 0; return this},
-
-			add: function(v){ return new vector(this.x + v.x, this.y + v.y);},
-			sub: function(v){ return new vector(this.x - v.x, this.y - v.y);},
-			mul: function(n){ return new vector(this.x * n, this.y * n);},
-			div: function(n){ return new vector(this.x/n, this.y/n);},
-
-			dot: function(v){ return (this.x * v.x + this.y * v.y);},
-
-			magnitude: function(){ return Math.sqrt(this.x * this.x + this.y * this.y);},
-			magnitude2: function(){ return this.x * this.x + this.y * this.y;},
-			unit: function(){
-				var a = Math.sqrt(this.x * this.x + this.y * this.y);
-				return new vector(
-					this.x / a,
-					this.y / a
-				);
-			},
-
-			normalize: function(){
-				var a = Math.sqrt(this.x * this.x + this.y * this.y);
-				this.x /= a;
-				this.y /= a;
-				return this;
-			},
-		}
-
 		var index = 0;
 
-		var Particle = function(args){
-			this.type = 1;
-
-			this.inv_mass = 1;
-
-			this.pos = new vector(args.x, args.y);
-			this.prev = new vector(args.x, args.y);
-
-			this.fixated = args.fixated;
-
-			this.accel = new vector(0, 0);
-
-			$('#world').append(
-			'<div id = "'
-				+ index +
-			'" class = "particle" style = "position: absolute; left: 0; bottom: 0; transform: translate3d('
-				+ this.pos.x + 'px, ' + (-this.pos.y) +
-			'px, 0) rotate('
-				+ 0 +
-			'rad);"></div>'
-			);
-
-			this.element = document.getElementById(index);
-
-			console.log('new particle');
-			++index;
-
-		}
-
-		Particle.prototype = {
-			accelerate: function(v){ if(!this.fixated){this.accel.iadd(v);} },
-			correct: function(v){ if(!this.fixated){this.pos.iadd(v);} },
-			step: function(dt){
-				this.accel.imul(dt * dt);
-				
-				var updated_pos = this.pos.mul(2).sub(this.prev).add(this.accel);
-
-				this.prev = this.pos;
-				this.pos = updated_pos;
-				this.accel.zero();
-			},
-			sync: function(){
-				this.element.style.transform =
-				'translate3d('
-					+ this.pos.x + 'px, ' + (-this.pos.y) +
-				'px, 0) rotate('
-					+ 0 +
-				'rad)';
-
-			}
-		}
-
+		//...............................................................................CIRCLE ITEM
 		var Circle = function(args){
+
 			this.type = 2;
 
 			this.inv_mass = 1 / args.mass;
@@ -172,14 +88,7 @@
 		}
 
 		Circle.prototype = {
-			accelerate: function(v){
-				/*
-				this.pos += this.accel.mul(dt * dt);
-				this.accel.zero();
-				*/
-				if(!this.fixated){this.accel.iadd(v);}
-			},
-			//accelerate: function(v){ if(!this.fixated){this.accel.iadd(v);} },
+			accelerate: function(v){if(!this.fixated){this.accel.iadd(v);} },
 			correct: function(v){ if(!this.fixated){this.pos.iadd(v);} },
 			step: function(dt){
 				this.accel.imul(dt * dt);
@@ -201,6 +110,7 @@
 			}
 		}
 
+		//...............................................................................COLLISION RESOLUTION
 		var Collide = function(a, b, impulse_preservation){
 			var target = a.radius + b.radius;
 			var N = b.pos.sub(a.pos);
@@ -240,10 +150,17 @@
 			}
 		}
 
+
+		//...............................................................................CONSTRAINT RESOLUTION
+		var const_count = 0;
+
 		var distConstraint = function(a, b){
+			this.index = const_count;
 			this.a = a;
 			this.b = b;
 			this.target = b.pos.sub(a.pos).magnitude();
+
+			++const_count;
 		}
 
 		distConstraint.prototype = {
@@ -260,6 +177,7 @@
 
 
 
+		//...............................................................................WORLD
 		var elem = [];
 		var constraints = [];
 
@@ -276,73 +194,53 @@
 				fixated: true,
 			});
 
-			/*
-			elem[0].accelerate(new vector(10, -10));
-
-			elem[1] = new Circle({
-				x: 600,
-				y: 400,
-				radius: 20,
-				fixated: false,
-			});
-
-			elem[2] = new Circle({
-				x: 650,
-				y: 400,
-				radius: 20,
-				fixated: false,
-			});
-
-			elem[3] = new Particle({
-				x: 600,
-				y: 400,
-				fixated: false,
-			});
-
-			elem[2] = new Particle({
-				x: 550,
-				y: 550,
-				fixated: false,
-			});
-			elem[3] = new Particle({
-				x: 550,
-				y: 500,
-				fixated: false,
-			});
-			elem[4] = new Particle({
-				x: 600,
-				y: 500,
-				fixated: true,
-			});
-			constraints[0] = new Constraint(elem[0], elem[1]);
-			constraints[1] = new Constraint(elem[1], elem[2]);
-			constraints[2] = new Constraint(elem[2], elem[3]);
-			constraints[3] = new Constraint(elem[3], elem[0]);
-			constraints[4] = new Constraint(elem[4], elem[3]);
-			constraints[5] = new Constraint(elem[1], elem[3]);
-			constraints[6] = new Constraint(elem[0], elem[2]);
-			*/
 			timestep();
 		});
+
+
+
+		//...............................................................................INTERFACE
+		var default_circle = { x: 500, y: 500, radius: 20, mass: 1, restitution: 0.5}
+
+		function createCircle(args){
+			elem[index] = new Circle({
+					x: args.x || default_circle.x,
+					y: args.y || default_circle.y,
+					radius: args.radius || default_circle.radius,
+					mass: args.mass || default_circle.mass,
+					restitution: args.restitution || default_circle.restitution,
+			});
+		}
+
+
+		var default_particle = {x: 500,	y: 500,	mass: 1, restitution: 1}
+
+		function createParticle(args){
+			elem[index] = new Circle({
+					x: args.x || default_particle.x,
+					y: args.y || default_particle.y,
+					radius: 1,
+					mass: args.mass || default_particle.mass,
+					restitution: args.restitution || default_particle.restitution,
+			});
+			constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
+		}
+
+
+
 
 		function clickHandler(event){
 			var w = document.getElementById("world");
 			var x = event.pageX - $("#world").offset().left;
 			var y = 720 - (event.pageY - $("#world").offset().top);
 
-			//console.log(x + " " + y);
-
-			elem[index] = new Circle({
-				x: x,
-				y: y,
-				mass: 1,
-				radius: 20,
-				restitution: 1,
-				fixated: false,
-			});
-			//if(index % 2){elem[index - 1].accelerate(new vector(5, 0));}
+			//createCircle({x: x, y: y});
+			createParticle({x: x, y: y});
+			
 		}
 
+
+		//...............................................................................TIMESTEPPING
 		var iter = 10;
 		var dt = 1 / iter;
 
@@ -350,8 +248,6 @@
 		function timestep(){
 
 			for(var t = 0; t < iter; ++t){
-
-
 
 				//particle constraints
 				for(var i = 0; i < constraints.length; ++i){constraints[i].resolve();}
@@ -365,6 +261,7 @@
 				}	
 				}
 
+				//propagation
 				for(var i = 0; i < elem.length; ++i){ elem[i].step(dt);}
 
 				for(var i = 0; i < elem.length; ++i){
@@ -375,10 +272,8 @@
 
 
 				//placeholder ground constraint
-					for(var i = 0; i < elem.length; ++i){
+				for(var i = 0; i < elem.length; ++i){
 					if(elem[i].pos.y - (0 || elem[i].radius) < 0){ elem[i].pos.y = elem[i].radius;}
-					//if(elem[i].pos.x + (0 || elem[i].radius) > 720){ elem[i].pos.x = -elem[i].radius;}
-					//if(elem[i].pos.x - (0 || elem[i].radius) < 0){ elem[i].pos.x = elem[i].radius;}
 				}
 				
 			}
