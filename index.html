@@ -421,7 +421,7 @@
 		var mousemode = 0;
 		var create_circle = 1;
 		var create_particle = 2;
-		var create_constraint = 3;
+		//var create_constraint = 3;
 
 		function clickHandler(event){
 
@@ -435,13 +435,13 @@
 
 			} else if (mousemode == create_circle){
 				createCircle({x: x, y: y});
-				mousemode = 0;
+				//mousemode = 0;
 
 			} else if (mousemode == create_particle){
 				createParticle({x: x, y: y});
-				mousemode = 0;
+				//mousemode = 0;
 
-			} else if (mousemode == create_constraint){
+			//} else if (mousemode == create_constraint){
 
 			}
 		}
@@ -455,7 +455,7 @@
 			$(elem[hoverindex].element).removeClass('underhover');
 		}
 		function hoverElem(i){
-			if((mousemode == 0) || (mousemode == create_constraint)){
+			if(mousemode == 0){
 				$(elem[hoverindex].element).removeClass('underhover');
 				hoverindex = i;
 				$(elem[hoverindex].element).addClass('underhover');	
@@ -464,7 +464,7 @@
 
 		var selectindex = 0;
 		function selectElem(i){
-			if ((mousemode == 0) || (mousemode == create_constraint)){
+			if (mousemode == 0){
 				$(elem[selectindex].element).removeClass('selected');
 				selectindex = i;
 				$(elem[selectindex].element).removeClass('underhover');		
@@ -472,18 +472,17 @@
 
 			}
 
-			if (mousemode == create_constraint){
-				if(joint_flag == 1){
-					joint_a = elem[selectindex].index;
-					++joint_flag;
-				} else if (joint_flag == 2){
-					joint_b = elem[selectindex].index;
+			if(joint_flag == 1){
+				joint_a = elem[selectindex].index;
+				++joint_flag;
+			} else if (joint_flag == 2){
+				joint_b = elem[selectindex].index;
 
-					createConstraint(joint_a, joint_b);
+				createConstraint(joint_a, joint_b);
 
-					joint_flag = 0;
-				}
+				joint_flag = 1;
 			}
+			
 		}
 
 		$(document).ready(function(){
@@ -493,15 +492,21 @@
 				if(running){
 					$("#sim_switch").removeClass('off');
 					$("#sim_switch").addClass('on');
+
 				} else {
 					$("#sim_switch").removeClass('on');
 					$("#sim_switch").addClass('off');
 				}
 			});
 
-			$("#circle_btn").on('click', function(){ mousemode = create_circle; });
-			$("#particle_btn").on('click', function(){ mousemode = create_particle; });
-			$("#constraint_btn").on('click', function(){ mousemode = create_constraint; joint_flag = 1;});
+			$("#cursor_btn").on('click', function(){ mousemode = 0; joint_flag = 0;});
+
+			$("#circle_btn").on('click', function(){ mousemode = create_circle; console.log('mousemode ' + mousemode);});
+			$("#particle_btn").on('click', function(){ mousemode = create_particle; console.log('mousemode ' + mousemode);});
+			$("#constraint_btn").on('click', function(){
+				mousemode = 0;
+				joint_flag = 1;
+			});
 		});
 	</script>
 
@@ -514,6 +519,9 @@
 	<div id = "toolkit">
 		<center style = "background-color: #888888; color: #222222; font-size: 10px; padding: 2px">TOOLKIT</center>
 		<div id = "sim_switch" class = "switch off">TIMESTEP</div>
+
+		<div class = "label">SWITCH TOOL</div>
+		<div id = "cursor_btn" class = "btn">· CURSOR</div>
 
 		<div class = "label">ADD NEW</div>
 		<div id = "particle_btn" class = "btn">· PARTICLE</div>
