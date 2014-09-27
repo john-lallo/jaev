@@ -183,6 +183,10 @@
 			var target = a.radius + b.radius;
 			var N = b.pos.sub(a.pos);
 
+			if (N.magnitude2() == 0){
+				N = new vector(Math.random() * 0.00001, Math.random() * 0.00001);
+			}
+
 			if(N.magnitude2() < target * target){
 
 				N.normalize();
@@ -338,32 +342,40 @@
 			for(var t = 0; t < iter; ++t){
 
 				//particle constraints
-				for(var i = 0; i < constraints.length; ++i){constraints[i].resolve();}
-				for(var i = 0; i < elem.length; ++i){ elem[i].accelerate(gravity);}
+				for(var i = 0; i < constraints.length; ++i){ if(constraints[i]){ constraints[i].resolve(); }}
+				for(var i = 0; i < elem.length; ++i){
+					if(elem[i]){ elem[i].accelerate(gravity);}
+				}
 
 				//collision resolution
 				for(var i = 0; i < elem.length; ++i){
 				for(var j = i + 1; j < elem.length; ++j){
+					if(elem[j] && elem[i]){
 					Collide(elem[i], elem[j], false);
+					}
 				}}
 
 				//propagation
-				for(var i = 0; i < elem.length; ++i){ elem[i].step(dt);}
+				for(var i = 0; i < elem.length; ++i){ if(elem[i]){ elem[i].step(dt);}}
 
 				for(var i = 0; i < elem.length; ++i){
 				for(var j = i + 1; j < elem.length; ++j){
+					if(elem[j] && elem[i]){
 					Collide(elem[i], elem[j], true);
+					}
 				}}
 
 				//placeholder ground constraint
 				for(var i = 0; i < elem.length; ++i){
+					if(elem[i]){
 					if(elem[i].pos.y - (0 || elem[i].radius) < 0){ elem[i].pos.y = elem[i].radius;}
+					}
 				}
 				
 			}
 
-			for(var i = 0; i < elem.length; ++i){ elem[i].sync(); }
-			for(var i = 0; i < constraints.length; ++i){ constraints[i].sync(); }
+			for(var i = 0; i < elem.length; ++i){ if(elem[i]){ elem[i].sync(); }}
+			for(var i = 0; i < constraints.length; ++i){ if(constraints[i]){ constraints[i].sync(); }}
 
 			if(running){ window.requestAnimationFrame(timestep); }
 		}
@@ -450,22 +462,37 @@
 		var joint_a;
 		var jonit_b;
 
-		var hoverindex = 0;
+		var delete_flag = 0;
+
+		var hoverindex = -1;
 		function unhover(){
+			if(hoverindex != -1){
 			$(elem[hoverindex].element).removeClass('underhover');
+			}
+			hoverindex = -1;
 		}
 		function hoverElem(i){
 			if(mousemode == 0){
+				if(hoverindex != -1){
 				$(elem[hoverindex].element).removeClass('underhover');
+				}
 				hoverindex = i;
 				$(elem[hoverindex].element).addClass('underhover');	
 			}
 		}
 
-		var selectindex = 0;
+		var selectindex = -1;
+		function unselect(){
+			if(selectindex != -1){
+			$(elem[selectindex].element).removeClass('selected');
+			}
+			selectindex = -1;
+		}
 		function selectElem(i){
 			if (mousemode == 0){
+				if(selectindex != -1){
 				$(elem[selectindex].element).removeClass('selected');
+				}
 				selectindex = i;
 				$(elem[selectindex].element).removeClass('underhover');		
 				$(elem[selectindex].element).addClass('selected');	
@@ -482,6 +509,25 @@
 
 				joint_flag = 1;
 			}
+
+			if(delete_flag == 1){
+				unhover();
+				unselect();
+
+				for(var u = 0; u < constraints.length; ++u){
+					if(constraints[u]){
+						if((constraints[u].a.index == i) || (constraints[u].b.index == i)){
+							constraints[u].element.remove();
+							delete constraints[u];
+						}
+					}
+				}
+
+				elem[i].element.remove();
+				delete elem[i];
+
+				delete_flag = 0;
+			}
 			
 		}
 
@@ -490,6 +536,8 @@
 				toggleSimulation();
 
 				if(running){
+					unhover();
+					unselect();
 					$("#sim_switch").removeClass('off');
 					$("#sim_switch").addClass('on');
 
@@ -500,6 +548,7 @@
 			});
 
 			$("#cursor_btn").on('click', function(){ mousemode = 0; joint_flag = 0;});
+			$("#delete_btn").on('click', function(){ mousemode = 0; delete_flag = 1});
 
 			$("#circle_btn").on('click', function(){ mousemode = create_circle; console.log('mousemode ' + mousemode);});
 			$("#particle_btn").on('click', function(){ mousemode = create_particle; console.log('mousemode ' + mousemode);});
@@ -507,6 +556,17 @@
 				mousemode = 0;
 				joint_flag = 1;
 			});
+
+			$("#reset_btn").on('click', function(){
+				unhover();
+				unselect();
+
+				elem = [];
+				constraints = [];
+				document.getElementById("world").innerHTML = "";
+			});
+
+
 		});
 	</script>
 
@@ -522,11 +582,13 @@
 
 		<div class = "label">SWITCH TOOL</div>
 		<div id = "cursor_btn" class = "btn">· CURSOR</div>
-
+		<div id = "delete_btn" class = "btn">· DELETE</div>
 		<div class = "label">ADD NEW</div>
 		<div id = "particle_btn" class = "btn">· PARTICLE</div>
 		<div id = "circle_btn" class = "btn">· CIRCLE</div>
 		<div id = "constraint_btn" class = "btn">· CONSTRAINT</div>
+		<div class = "label">WORLD</div>
+		<div id = "reset_btn" class = "btn">· RESET</div>
 	</div>
 </body>
 
