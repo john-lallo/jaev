@@ -223,7 +223,7 @@
 					mass: args.mass || default_particle.mass,
 					restitution: args.restitution || default_particle.restitution,
 			});
-			constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
+			//constraints[const_count] = new distConstraint(elem[index - 1], elem[index - 2]);
 		}
 
 
@@ -234,9 +234,12 @@
 			var x = event.pageX - $("#world").offset().left;
 			var y = 720 - (event.pageY - $("#world").offset().top);
 
-			//createCircle({x: x, y: y});
+			//if(Math.floor(2 * Math.random()) % 2){
+			createCircle({x: x, y: y, radius: Math.random() * 40});
+			/*} else {
 			createParticle({x: x, y: y});
-			
+			}
+			*/
 		}
 
 
