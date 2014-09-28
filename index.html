@@ -336,7 +336,7 @@
 
 		var gravity = new vector(0, -1);
 
-		var running = 0;
+		var running = 1;
 		function timestep(){
 
 			for(var t = 0; t < iter; ++t){
@@ -428,12 +428,44 @@
 			constraints[const_count] = new distConstraint(elem[a], elem[b]);
 		}
 
+
+
+		function removeElem(i){
+			console.log('removed element.');
+
+			for(var u = 0; u < constraints.length; ++u){
+			if(constraints[u]){
+					if((constraints[u].a.index == i) || (constraints[u].b.index == i)){
+						constraints[u].element.remove();
+						delete constraints[u];
+					}
+			}
+			}
+
+			elem[i].element.remove();
+			delete elem[i];
+			//elem.splice(i, 1);
+		}
+
 		//...............................................................................EDITOR
 
-		var mousemode = 0;
-		var create_circle = 1;
-		var create_particle = 2;
+		var create_circle_flag = 0;
+		var create_particle_flag = 0;
 		//var create_constraint = 3;
+		var joint_flag = 0;
+		var joint_a;
+		var jonit_b;
+
+		var delete_flag = 0;
+
+		function reset_flags(){
+			create_circle_flag = 0;
+			create_particle_flag = 0;
+			joint_flag = 0;
+			joint_a = null;
+			joint_b = null;
+			delete_flag = 0;
+		}
 
 		function clickHandler(event){
 
@@ -443,28 +475,20 @@
 
 			event.preventDefault();
 
-			if(mousemode == 0){
-
-			} else if (mousemode == create_circle){
-				createCircle({x: x, y: y});
-				//mousemode = 0;
-
-			} else if (mousemode == create_particle){
-				createParticle({x: x, y: y});
-				//mousemode = 0;
-
-			//} else if (mousemode == create_constraint){
-
-			}
+			if (create_circle_flag){ createCircle({x: x, y: y}); }
+			if (create_particle_flag){ createParticle({x: x, y: y}); }
 		}
 		
-		var joint_flag = 0;
-		var joint_a;
-		var jonit_b;
 
-		var delete_flag = 0;
+
+
+
+
+
+
 
 		var hoverindex = -1;
+
 		function unhover(){
 			if(hoverindex != -1){
 			$(elem[hoverindex].element).removeClass('underhover');
@@ -472,33 +496,34 @@
 			hoverindex = -1;
 		}
 		function hoverElem(i){
-			if(mousemode == 0){
-				if(hoverindex != -1){
-				$(elem[hoverindex].element).removeClass('underhover');
-				}
-				hoverindex = i;
-				$(elem[hoverindex].element).addClass('underhover');	
+			if(hoverindex != -1){
+			$(elem[hoverindex].element).removeClass('underhover');
 			}
+			hoverindex = i;
+			$(elem[hoverindex].element).addClass('underhover');	
 		}
 
+
+
 		var selectindex = -1;
+
 		function unselect(){
 			if(selectindex != -1){
+
 			$(elem[selectindex].element).removeClass('selected');
 			}
+
 			selectindex = -1;
 		}
 		function selectElem(i){
-			if (mousemode == 0){
-				if(selectindex != -1){
-				$(elem[selectindex].element).removeClass('selected');
-				}
-				selectindex = i;
-				$(elem[selectindex].element).removeClass('underhover');		
-				$(elem[selectindex].element).addClass('selected');	
-
+			if(selectindex != -1){
+			$(elem[selectindex].element).removeClass('selected');
 			}
+			selectindex = i;
+			$(elem[selectindex].element).removeClass('underhover');		
+			$(elem[selectindex].element).addClass('selected');	
 
+			//..........................................create constraints if flag is on
 			if(joint_flag == 1){
 				joint_a = elem[selectindex].index;
 				++joint_flag;
@@ -511,33 +536,28 @@
 			}
 
 			if(delete_flag == 1){
+				var target = selectindex;
 				unhover();
 				unselect();
+				removeElem(target);
 
-				for(var u = 0; u < constraints.length; ++u){
-					if(constraints[u]){
-						if((constraints[u].a.index == i) || (constraints[u].b.index == i)){
-							constraints[u].element.remove();
-							delete constraints[u];
-						}
-					}
-				}
-
-				elem[i].element.remove();
-				delete elem[i];
-
-				delete_flag = 0;
+				//delete_flag = 0;
 			}
 			
 		}
 
 		$(document).ready(function(){
 			$("#sim_switch").on('click', function(){
-				toggleSimulation();
 
-				if(running){
+				if(!running){
 					unhover();
 					unselect();
+				}
+
+				toggleSimulation();
+				reset_flags();
+
+				if(running){
 					$("#sim_switch").removeClass('off');
 					$("#sim_switch").addClass('on');
 
@@ -547,15 +567,13 @@
 				}
 			});
 
-			$("#cursor_btn").on('click', function(){ mousemode = 0; joint_flag = 0;});
-			$("#delete_btn").on('click', function(){ mousemode = 0; delete_flag = 1});
 
-			$("#circle_btn").on('click', function(){ mousemode = create_circle; console.log('mousemode ' + mousemode);});
-			$("#particle_btn").on('click', function(){ mousemode = create_particle; console.log('mousemode ' + mousemode);});
-			$("#constraint_btn").on('click', function(){
-				mousemode = 0;
-				joint_flag = 1;
-			});
+			$("#cursor_btn").on('click', function(){		reset_flags();									});
+			$("#delete_btn").on('click', function(){		reset_flags(); 		delete_flag = 1;			});
+
+			$("#circle_btn").on('click', function(){ 		reset_flags();		create_circle_flag = 1;		});
+			$("#particle_btn").on('click', function(){ 		reset_flags();		create_particle_flag = 1;	});
+			$("#constraint_btn").on('click', function(){ 	reset_flags();		joint_flag = 1; 			});
 
 			$("#reset_btn").on('click', function(){
 				unhover();
@@ -578,7 +596,7 @@
 	</div>
 	<div id = "toolkit">
 		<center style = "background-color: #888888; color: #222222; font-size: 10px; padding: 2px">TOOLKIT</center>
-		<div id = "sim_switch" class = "switch off">TIMESTEP</div>
+		<div id = "sim_switch" class = "switch on">TIMESTEP</div>
 
 		<div class = "label">SWITCH TOOL</div>
 		<div id = "cursor_btn" class = "btn">· CURSOR</div>
